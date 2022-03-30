@@ -1,0 +1,18 @@
+A1, Unresponsive
+B1, Short
+C1, Short
+D1 (square pad), Kind of working
+E1 (working) Shorted
+F1 (seems to only work at very high voltages) Shorted
+G1 (working, no hysteresis though)
+H1, (seems to only work at very high voltages- formed after going to -3.5V)
+I1, (Can't form)
+J1, (Can't form)
+A2, Short
+B2, Short
+C2, Shorted during measurement
+D2, Short
+
+A2 Short
+
+C4 Shows curve
