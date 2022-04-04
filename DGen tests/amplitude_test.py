@@ -17,9 +17,11 @@ from numpy import arange
 #       but the offset only goes to +- 2V 
 
 rm = visa.ResourceManager()
+lis=rm.list_resources()
+print ("avaliable modules:",lis)
 GP_type="GPIB0"
 
-dgen_name = GP_type+'::15::INSTR' #delay generator
+dgen_name = GP_type+'::4::INSTR' #delay generator
 
 DGen=rm.open_resource(dgen_name)
 DGEN_BUFFER_PERIOD = 25e-9

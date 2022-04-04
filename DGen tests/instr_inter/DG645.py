@@ -3,7 +3,7 @@ from time import sleep
 
 class DG645:
     def __init__(self,
-                 name='GPIB0::15::INSTR',
+                 name='GPIB0::4::INSTR',
                  pulse_on_period = 100e-6,
                  burst_period=200e-6,
                  pulse_number=1,
@@ -47,10 +47,18 @@ class DG645:
         self.DGen = DGen
     
     def config_burst(self, pulse_on_period, burst_period, pulse_number, 
-                           trig_freq, voltage):
+                           trig_freq, voltage, bnc=None, channel_start=None, channel_end=None):
         # Trigger relays to disconnect DGen before triggering the burst
         #   Otherwise there might be a small voltage spike due to offset
         assert(voltage >= -2 and voltage <= 5)
+
+        if bnc is not None:
+            self.bnc = bnc
+        if channel_start is not None:
+            self.channel_start = channel_start
+        if channel_end is not None:
+            self.channel_end = channel_end
+
         if voltage > 0:
             self.DGen.write(f"LPOL {self.bnc},1")
             self.DGen.write(f"LOFF {self.bnc},0")

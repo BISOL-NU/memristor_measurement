@@ -33,7 +33,7 @@ print ("avaliable modules:",lis)
 GP_type="GPIB0"
 ser = serial.Serial()
 ser.baudrate = 9600
-ser.port = 'COM7'
+ser.port = 'COM9'
 Sens_Table=[1e-12, 2e-12, 5e-12, 1e-11, 2e-11, 5e-11, 1e-10, 2e-10, 5e-10, 1e-9, 2e-9, 5e-9, 1e-8, 2e-8, 5e-8, 1e-7, 2e-7, 5e-7, 1e-6, 2e-6, 5e-6, 1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3]
 
 print ('Initializing ALL...')

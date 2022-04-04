@@ -4,7 +4,7 @@ from time import sleep
 rm = visa.ResourceManager()
 GP_type="GPIB0"
 
-dgen_name = GP_type+'::15::INSTR' #delay generator
+dgen_name = GP_type+'::11::INSTR' #delay generator
 
 DGen=rm.open_resource(dgen_name)
 DGEN_BUFFER_PERIOD = 25e-9

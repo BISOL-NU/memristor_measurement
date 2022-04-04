@@ -6,7 +6,7 @@ class relay_inter:
     DGEN = bytearray([1])
     LNA = bytearray([2])
 
-    def __init__(self, port='COM6', timeout=1):
+    def __init__(self, port='COM9', timeout=1):
         self.ser_mcu = serial.Serial(port, timeout=timeout)
 
     def switch_relay(self, msg):
