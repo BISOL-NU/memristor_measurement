@@ -3,7 +3,7 @@ from time import sleep
 
 class DG645:
     def __init__(self,
-                 name='GPIB0::4::INSTR',
+                 name='GPIB0::15::INSTR',
                  pulse_on_period = 100e-6,
                  burst_period=200e-6,
                  pulse_number=1,

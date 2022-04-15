@@ -11,11 +11,14 @@ class A34410A:
                 raise visa.VisaIOError(1) #randomly chosen error code
             self.DMM = rm.open_resource(name)  ## Digital Multi Meter Agilent 34410A
             self.DMM.write('*RST') 
-            sleep(.05)
+            sleep(.1)
             self.DMM.write('CONF:VOLT:DC 10') 
-            sleep(.05)
+            sleep(.1)
             self.DMM.write('VOLT:DC:NPLC 10') 
-            sleep(.05)
+            sleep(.1)
+            self.DMM.write('VOLT:DC:IMP:AUTO 1')
+            sleep(.1)
+            #self.DMM.write('VOLT::DC:ZERO:AUTO ONCE')
 
         except visa.VisaIOError:
             raise Exception("Not attached to Digital Multimeter")

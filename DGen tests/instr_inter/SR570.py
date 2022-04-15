@@ -14,7 +14,7 @@ class SR570:
     gain_mode = {'low_noise': 0, 'high_bw':1, 'low_drift':2}
 
     def __init__(self,
-                 port='COM7', baud=9600,
+                 port='COM9', baud=9600,
                  set_point=200, sens=0,
                  filter_type='12dB',
                  filter_freq=1,
@@ -51,12 +51,14 @@ class SR570:
 
         self.write(f'FLTT {self.filters[self.filter_type]}')
         self.write(f'LFRQ {self.filter_freqs.index(self.filter_freq)}')
-        sleep(.25)
+        self.write('*WAI')
+        sleep(.5)
     
     def set_sens(self, sens, delay=.1):
         assert(sens >=0 and sens < 28)
         self.sens = sens
         self.write(f'SENS {sens}', delay)
+        sleep(.5)
 
     def set_bias(self, bias=200, delay=.5):
         self.write(f'BSLV {bias}', delay) # Set the bias voltages

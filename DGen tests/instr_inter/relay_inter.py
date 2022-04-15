@@ -1,3 +1,4 @@
+from pickle import NONE
 import serial
 from time import sleep
 
@@ -6,8 +7,10 @@ class relay_inter:
     DGEN = bytearray([1])
     LNA = bytearray([2])
 
-    def __init__(self, port='COM9', timeout=1):
+    def __init__(self, port='COM6', timeout=1):
         self.ser_mcu = serial.Serial(port, timeout=timeout)
+        sleep(1)
+        self.switch_relay(self.NONE)
 
     def switch_relay(self, msg):
         if not self.ser_mcu.isOpen():
