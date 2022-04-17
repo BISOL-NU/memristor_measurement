@@ -12,30 +12,26 @@ def select_dir(*args):
    save_dir_val.set(path)
 
 def scale_change(*args):
-   try:
-      val = plot_scale_clicked.get()
-   except:
-      return
+    try:
+        val = plot_scale_clicked.get()
+    except:
+        return
 
-   if val == 'symlog':
-      plot_linthresh_meas.grid(column=2, row=4, sticky=tk.E, padx=5, pady=5)
-      plot_linthresh_label.grid(column=0, row=4, sticky=tk.W, padx=5, pady=5)
-      try:
-         linthresh = plot_linthresh_val.get()
-      except:
-         return
-      ax_seq.set_yscale(val, linthreshy=linthresh)
-      ax_iv.set_yscale(val, linthreshy=linthresh)
-   else:
-      plot_linthresh_meas.grid_remove()
-      plot_linthresh_label.grid_remove()
-      ax_seq.set_yscale(val)
-      ax_iv.set_yscale(val)
+    if val == 'symlog':
+        plot_linthresh_meas.grid(column=2, row=4, sticky=tk.E, padx=5, pady=5)
+        plot_linthresh_label.grid(column=0, row=4, sticky=tk.W, padx=5, pady=5)
+        try:
+            linthresh = plot_linthresh_val.get()
+        except:
+            return
+        ax_meas.set_yscale(val, linthreshy=linthresh)
+    else:
+        plot_linthresh_meas.grid_remove()
+        plot_linthresh_label.grid_remove()
+        ax_meas.set_yscale(val)
 
-   fig_seq.tight_layout()
-   fig_iv.tight_layout()
-   canvas_seq.draw()
-   canvas_iv.draw()
+    fig_meas.tight_layout()
+    canvas_meas.draw()
 
 def start_scan(*args):
    save_dir_btn['state'] = tk.DISABLED
@@ -45,10 +41,12 @@ def start_scan(*args):
 
 root = tk.Tk()
 root.state('zoomed')
-root.title('IV Sweep GUI')
+root.title('Pulse GUI')
+dashboard_frame = tk.Frame(root)
+dashboard_frame.grid(column=0, row=0, rowspan=4, sticky=tk.N)
 
 ## Device options
-device_frame = tk.Frame(root, bd=2, width=450)
+device_frame = tk.Frame(dashboard_frame, bd=2, width=450)
 device_frame.grid(column=0, row=0,sticky=tk.W+tk.E)
 device_frame.grid_columnconfigure(0, weight=1)
 # Save Dir
@@ -57,7 +55,7 @@ save_dir_label.grid(column=0, row=1, sticky=tk.W, padx=5, pady=5)
 save_dir_btn = tk.Button(device_frame, text='Browse', command=select_dir)
 save_dir_btn.grid(column=1, row=1, sticky=tk.E, padx=5, pady=5)
 save_dir_val = tk.StringVar()
-save_dir_entry = tk.Entry(device_frame, text=save_dir_val, width=42)
+save_dir_entry = tk.Entry(device_frame, text=save_dir_val, width=50)
 save_dir_entry.grid(column=0, row=2, columnspan=2, sticky=tk.W, padx=5, pady=5)
 now = datetime.now()
 date = now.strftime('%Y-%m-%d')
@@ -78,7 +76,7 @@ device_idx_meas.grid(column=1, row=4, sticky=tk.E, padx=5, pady=5)
 device_idx_val.set('0')
 
 ## LNA Options
-lna_frame = tk.Frame(root, bd=2, width=375)
+lna_frame = tk.Frame(dashboard_frame, bd=2, width=375)
 lna_frame.grid(column=0, row=1, sticky=tk.W+tk.E)
 lna_frame.grid_columnconfigure(0, weight=1)
 # Label for the subframe
@@ -123,7 +121,7 @@ lna_offset_check = tk.Checkbutton(lna_frame, text='Offset Correction', variable=
 lna_offset_check.grid(column=0, row=5, columnspan=2, padx=5, pady=5)
 
 ## DMM Options
-dmm_frame = tk.Frame(root, bd=2, width=375)
+dmm_frame = tk.Frame(dashboard_frame, bd=2, width=375)
 dmm_frame.grid(column=0, row=2, sticky=tk.W+tk.E)
 dmm_frame.grid_columnconfigure(0, weight=1)
 # Label for the subframe
@@ -151,53 +149,63 @@ dmm_discard_meas = tk.Entry(dmm_frame, text=dmm_discard_val, width=5)
 dmm_discard_meas.grid(column=1, row=3, sticky=tk.E, padx=5, pady=5)
 dmm_discard_val.set(0)
 
-## General Sweep Options
-sweep_frame = tk.Frame(root, bd=2, width=375)
-sweep_frame.grid(column=0, row=3, sticky=tk.W+tk.E)
-sweep_frame.grid_columnconfigure(0, weight=1)
+## Pulse Parameters
+pulse_frame = tk.Frame(dashboard_frame, bd=2, width=375)
+pulse_frame.grid(column=0, row=3, sticky=tk.W+tk.E)
+pulse_frame.grid_columnconfigure(0, weight=1)
 # Label for the subframe
-tk.Label(sweep_frame, text='IV Sweep', font=('Arial',12)).grid(column=0, row=0, sticky=tk.W, padx=5, pady=5)
-# Min Voltage
-sweep_min_label = tk.Label(sweep_frame, text='Min Voltage (V)')
-sweep_min_label.grid(column=0, row=1, sticky=tk.W, padx=5, pady=5)
-sweep_min_val = tk.DoubleVar()
-sweep_min_meas = tk.Entry(sweep_frame, text=sweep_min_val, width=5)
-sweep_min_meas.grid(column=1, row=1, sticky=tk.E+tk.W, padx=5, pady=5)
-sweep_min_meas.grid_columnconfigure(1, weight=1)
-sweep_min_val.set(-1.5)
-# Max Voltage
-sweep_max_label = tk.Label(sweep_frame, text='Max Voltage (V)')
-sweep_max_label.grid(column=0, row=2, sticky=tk.W, padx=5, pady=5)
-sweep_max_val = tk.DoubleVar()
-sweep_max_meas = tk.Entry(sweep_frame, text=sweep_max_val, width=5)
-sweep_max_meas.grid(column=1, row=2, sticky=tk.E+tk.W, padx=5, pady=5)
-sweep_max_meas.grid_columnconfigure(1, weight=1)
-sweep_max_val.set(1.5)
-# Voltage Step
-sweep_step_label = tk.Label(sweep_frame, text='Voltage Step (V)')
-sweep_step_label.grid(column=0, row=3, sticky=tk.W, padx=5, pady=5)
-sweep_step_val = tk.DoubleVar()
-sweep_step_meas = tk.Entry(sweep_frame, text=sweep_step_val, width=5)
-sweep_step_meas.grid(column=1, row=3, sticky=tk.E+tk.W, padx=5, pady=5)
-sweep_step_meas.grid_columnconfigure(1, weight=1)
-sweep_step_val.set(0.1)
+tk.Label(pulse_frame, text='Pulse Measurement', font=('Arial',12)).grid(column=0, row=0, columnspan=2, sticky=tk.W, padx=5, pady=5)
+# Pulse Voltage
+pulse_v_label = tk.Label(pulse_frame, text='Pulse Amplitude (V)')
+pulse_v_label.grid(column=0, row=1, sticky=tk.W, padx=5, pady=5)
+pulse_v_val = tk.StringVar()
+pulse_v_meas = tk.Entry(pulse_frame, text=pulse_v_val, width=25)
+pulse_v_meas.grid(column=1, row=1, sticky=tk.E+tk.W, padx=5, pady=5)
+pulse_v_meas.grid_columnconfigure(1, weight=1)
+pulse_v_val.set('7, -7')
+# Pulse period
+pulse_period_label = tk.Label(pulse_frame, text='Pulse On Period (s)')
+pulse_period_label.grid(column=0, row=2, sticky=tk.W, padx=5, pady=5)
+pulse_period_val = tk.StringVar()
+pulse_period_meas = tk.Entry(pulse_frame, text=pulse_period_val, width=25)
+pulse_period_meas.grid(column=1, row=2, sticky=tk.E+tk.W, padx=5, pady=5)
+pulse_period_meas.grid_columnconfigure(1, weight=1)
+pulse_period_val.set('500e-9, 500e-9')
+# Pulse per Burst
+pulse_per_burst_label = tk.Label(pulse_frame, text='Pulses per burst')
+pulse_per_burst_label.grid(column=0, row=3, sticky=tk.W, padx=5, pady=5)
+pulse_per_burst_val = tk.StringVar()
+pulse_per_burst_meas = tk.Entry(pulse_frame, text=pulse_per_burst_val, width=25)
+pulse_per_burst_meas.grid(column=1, row=3, sticky=tk.E+tk.W, padx=5, pady=5)
+pulse_per_burst_meas.grid_columnconfigure(1, weight=1)
+pulse_per_burst_val.set('100, 100')
+# Number of Bursts
+pulse_num_burst_label = tk.Label(pulse_frame, text='Number of Bursts')
+pulse_num_burst_label.grid(column=0, row=4, sticky=tk.W, padx=5, pady=25)
+pulse_num_burst_val = tk.StringVar()
+pulse_num_burst_meas = tk.Entry(pulse_frame, text=pulse_num_burst_val, width=25)
+pulse_num_burst_meas.grid(column=1, row=4, sticky=tk.E+tk.W, padx=5, pady=5)
+pulse_num_burst_meas.grid_columnconfigure(1, weight=1)
+pulse_num_burst_val.set('15, 15')
 
 ## Plot Settings
-plot_frame = tk.Frame(root, bd=2, width=375)
+plot_frame = tk.Frame(dashboard_frame, bd=2, width=375)
 plot_frame.grid(column=0, row=4, sticky=tk.W+tk.E)
 plot_frame.grid_columnconfigure(0, weight=1)
 # Button to start sweep
 ft = font.Font(size='14', weight='bold')
-save_dir_btn = tk.Button(plot_frame, text='Start Scan', command=start_scan, font=ft)
+save_dir_btn = tk.Button(plot_frame, text='Start Pulsing', command=start_scan, font=ft)
 save_dir_btn.grid(column=0, row=0, columnspan=3, sticky='EW', padx=5, pady=5)
 # Progress bar for the scan
 pb = ttk.Progressbar(plot_frame, orient='horizontal', mode='determinate')
 # Labels for the current sens and current
 sens_label = tk.Label(plot_frame)
 curr_label = tk.Label(plot_frame)
+
 # Keep previous plots
 hold_on = tk.BooleanVar()
 plot_hold_on_check = tk.Checkbutton(plot_frame, text='Hold On', variable=hold_on)
+hold_on.set(True)
 plot_hold_on_check.grid(column=0, row=3, padx=5, pady=5)
 # Set linthresh for symlog
 plot_linthresh_label = tk.Label(plot_frame, text='Symlog linthresh')
@@ -221,34 +229,32 @@ plot_scale_clicked.trace('w', scale_change)
 font = {'size'   : 5}
 rc('font', **font)
 
-# Sequential Figures
-fig_seq, (ax_seq, ax_seq_v) = plt.subplots(2, 1)
-fig_seq.set_size_inches(3.5,4.75)
-canvas_seq = mplTk.FigureCanvasTkAgg(fig_seq, master=root)
-canvas_seq.get_tk_widget().grid(column=1, row=0, sticky=tk.W+tk.E, rowspan=10)
-ax_seq.set_ylabel('Current (A)')
-ax_seq.set_xlabel('Measurement #')
-ax_seq_v.set_ylabel('Bias Voltage (V)')
-ax_seq_v.set_xlabel('Measurement #')
-fig_seq.tight_layout()
+# Measurement Figures
+fig_meas, ax_meas = plt.subplots(1, 1)
+fig_meas.set_size_inches(8,2.25)
+canvas_meas = mplTk.FigureCanvasTkAgg(fig_meas, master=root)
+canvas_meas.get_tk_widget().grid(column=1, row=0, sticky=tk.W+tk.E)
+ax_meas.set_xlabel('Measurement #')
+ax_meas.set_ylabel('Current (A)')
+fig_meas.tight_layout()
 
-frame_seq_toolbar = tk.Frame(root)
-frame_seq_toolbar.grid(row=10, column=1)
-toolbar_seq = mplTk.NavigationToolbar2Tk(canvas_seq, frame_seq_toolbar)
-toolbar_seq.update()
+frame_meas_toolbar = tk.Frame(root)
+frame_meas_toolbar.grid(row=1, column=1, sticky=tk.E)
+toolbar_meas = mplTk.NavigationToolbar2Tk(canvas_meas, frame_meas_toolbar)
+toolbar_meas.update()
 
-# IV figure
-fig_iv, ax_iv = plt.subplots(1,1)
-fig_iv.set_size_inches(4.75,4.75)
-canvas_iv = mplTk.FigureCanvasTkAgg(fig_iv, master=root)
-canvas_iv.get_tk_widget().grid(column=2, row=0, sticky=tk.W+tk.E, rowspan=10)
-ax_iv.set_xlabel('Bias Voltage (V)')
-ax_iv.set_ylabel('Current (A)')
-fig_iv.tight_layout()
+# Pulse figure
+fig_in, ax_in = plt.subplots(1,1)
+fig_in.set_size_inches(8,2.25)
+canvas_in = mplTk.FigureCanvasTkAgg(fig_in, master=root)
+canvas_in.get_tk_widget().grid(column=1, row=2, sticky=tk.W+tk.E)
+ax_in.set_xlabel('Measurement #')
+ax_in.set_ylabel('Pulse Voltage (V)')
+fig_in.tight_layout()
 
-frame_iv_toolbar = tk.Frame(root)
-frame_iv_toolbar.grid(row=10, column=2)
-toolbar_iv = mplTk.NavigationToolbar2Tk(canvas_iv, frame_iv_toolbar)
-toolbar_iv.update()
+frame_in_toolbar = tk.Frame(root)
+frame_in_toolbar.grid(row=3, column=1, sticky=tk.E)
+toolbar_in = mplTk.NavigationToolbar2Tk(canvas_in, frame_in_toolbar)
+toolbar_in.update()
 
 root.mainloop()
