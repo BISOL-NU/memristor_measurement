@@ -1,5 +1,6 @@
 # Attempts to use the Delay generator to trigger the pulse generator
-
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from instr_inter import AV1010B, DG645
 import numpy as np
 from time import sleep

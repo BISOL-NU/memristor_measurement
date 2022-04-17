@@ -1,3 +1,5 @@
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from instr_inter import DG645
 
 instr_lib = DG645.DG645(

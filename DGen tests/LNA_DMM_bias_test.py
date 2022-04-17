@@ -1,3 +1,5 @@
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from instr_inter import *
 import matplotlib.pyplot as plt
 from matplotlib import cm
