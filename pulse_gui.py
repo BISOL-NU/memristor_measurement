@@ -84,7 +84,7 @@ tk.Label(lna_frame, text='LNA', font=('Arial',12)).grid(column=0, row=0, sticky=
 # Gain Mode
 lna_gain_mode_label = tk.Label(lna_frame, text='Gain Mode')
 lna_gain_mode_label.grid(column=0, row=1, sticky=tk.W, padx=5, pady=5)
-lna_gain_mode_options = [m.replace('_', ' ') for m in list(SR570.SR570.gain_mode.keys())]
+lna_gain_mode_options = [m.replace('_', ' ') for m in list(SR570.SR570.gain_modes.keys())]
 lna_gain_mode_clicked = tk.StringVar()
 lna_gain_mode_clicked.set(lna_gain_mode_options[1])
 lna_gain_mode_menu = tk.OptionMenu(lna_frame, lna_gain_mode_clicked ,*lna_gain_mode_options)
@@ -226,12 +226,12 @@ plot_linthresh_val.trace('w', scale_change)
 plot_scale_clicked.trace('w', scale_change)
 
 ## Figure settings
-font = {'size'   : 5}
+font = {'size'   : 12}
 rc('font', **font)
 
 # Measurement Figures
 fig_meas, ax_meas = plt.subplots(1, 1)
-fig_meas.set_size_inches(8,2.25)
+fig_meas.set_size_inches(2*8,2*2.25)
 canvas_meas = mplTk.FigureCanvasTkAgg(fig_meas, master=root)
 canvas_meas.get_tk_widget().grid(column=1, row=0, sticky=tk.W+tk.E)
 ax_meas.set_xlabel('Measurement #')
@@ -245,7 +245,7 @@ toolbar_meas.update()
 
 # Pulse figure
 fig_in, ax_in = plt.subplots(1,1)
-fig_in.set_size_inches(8,2.25)
+fig_in.set_size_inches(2*8,2*2.25)
 canvas_in = mplTk.FigureCanvasTkAgg(fig_in, master=root)
 canvas_in.get_tk_widget().grid(column=1, row=2, sticky=tk.W+tk.E)
 ax_in.set_xlabel('Measurement #')

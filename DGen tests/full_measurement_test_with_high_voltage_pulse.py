@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from time import sleep
 from datetime import datetime
-import os
 
 relay = relay_inter.relay_inter()
 relay.switch_relay(relay.NONE) # Close relay during setup
