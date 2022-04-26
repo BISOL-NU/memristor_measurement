@@ -162,7 +162,7 @@ def iv_sweep(delay=.1):
    return curr, bias_v, time_spent, curr_floor_mean
 
 def start_scan(*args):
-   #save_dir_btn['state'] = tk.DISABLED
+   save_dir_btn['state'] = tk.DISABLED
    pb.grid(column=0, row=1, columnspan=3, sticky='EW', padx=5, pady=5)
    sens_label.grid(column=0, row=2, sticky='EW', padx=5, pady=5)
    curr_label.grid(column=2, row=2, columnspan=3, sticky='EW', padx=5, pady=5)
@@ -218,8 +218,11 @@ def start_scan(*args):
                          curr))
    np.savetxt(os.path.join(dir_name, f'{title}.csv'), save_arr, 
               delimiter=",",header=header_str)
+   # Increment index
+   device_idx_val.set(device_idx_val.get()+1)
    
    # Remove items
+   save_dir_btn['state'] = tk.NORMAL
    pb.grid_remove()
    sens_label.grid_remove()
    curr_label.grid_remove()
@@ -262,10 +265,10 @@ device_name_val.set('FIB1_A1')
 # Meas Idx
 device_idx_label = tk.Label(device_frame, text='Index')
 device_idx_label.grid(column=0, row=4, sticky=tk.W, padx=5, pady=5)
-device_idx_val = tk.StringVar()
+device_idx_val = tk.IntVar()
 device_idx_meas = tk.Entry(device_frame, text=device_idx_val, width=20)
 device_idx_meas.grid(column=1, row=4, sticky=tk.E, padx=5, pady=5)
-device_idx_val.set('0')
+device_idx_val.set(0)
 
 ## LNA Options
 lna_frame = tk.Frame(root, bd=2, width=375)

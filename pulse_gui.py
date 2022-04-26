@@ -1,16 +1,45 @@
 import tkinter as tk
 from tkinter import filedialog, ttk, font
+from turtle import color
 import matplotlib.backends.backend_tkagg as mplTk
 import matplotlib.pyplot as plt
-from matplotlib import rc
+from matplotlib import rc, cm
 from datetime import datetime
 import os
 from instr_inter import *
+from time import sleep
+import numpy as np
+from scan import meas_current
 
 def select_dir(*args):
    path= filedialog.askdirectory(title="Select a Folder")
    save_dir_val.set(path)
 
+# Helper function to parse a comma seperated input string
+def parse_csl(str):
+    sub_strs = str.split(',')
+    return np.array([float(sub.strip()) for sub in sub_strs])
+
+def replot():  
+    meas_local_idx = 0
+    for ii in range(currents.shape[0]):
+        v = pulse_hist[ii]
+        for jj in range(currents.shape[1]):
+            if currents[ii, jj] != np.NAN:
+                if v > 0:
+                    ax_meas.plot(meas_idx, currents[ii, jj], 'ro')
+                else:
+                    ax_meas.plot(meas_idx, currents[ii, jj], 'bo')
+                plot_square(meas_idx, v)
+                meas_local_idx += 1
+
+    fig_meas.tight_layout()
+    fig_in.tight_layout()
+    canvas_in.draw()
+    canvas_meas.draw()
+    canvas_in.flush_events()
+    canvas_meas.flush_events()
+    
 def scale_change(*args):
     try:
         val = plot_scale_clicked.get()
@@ -33,11 +62,212 @@ def scale_change(*args):
     fig_meas.tight_layout()
     canvas_meas.draw()
 
+def plot_square(idx, v):
+    if v > 0:
+        c = 'r'
+    else:
+        c = 'b'
+    x = [idx-1, idx-.75, idx-.75, idx-.25, idx-.25, idx]
+    y = [0, 0, v, v, 0, 0]
+    ax_in.plot(x, y, c=c)
+
+def plot_zero(idx, v):
+    if v > 0:
+        c = 'r'
+    else:
+        c = 'b'
+    x = [idx-1, idx]
+    y = [0, 0]
+    ax_in.plot(x, y, c=c)
+
+def pulse_train(v_sweep, 
+               pulse_on_period, burst_period, pulse_number, trig_freq, 
+               num_bursts):
+    relay.switch_relay(relay.NONE)
+    v = v_sweep[0]
+    PGen.config_pulse(pulse_voltage=v, pulse_width='in')
+    # Set the LNA offset
+    LNA.set_bias(round(meas_bias_v*1000))
+    sleep(1)
+    num_meas = dmm_num_val.get()
+    num_bursts_total = sum([n*num_meas for n in num_bursts])
+    global pulse_idx, meas_idx, currents
+    meas_idx_inital = meas_idx
+    for ii, n in enumerate(num_bursts):
+        DGen.config_burst(pulse_on_period[ii], burst_period[ii], pulse_number[ii], trig_freq[ii], 2, 
+                         bnc=1, channel_start=2, channel_end=3)
+        DGen.config_burst(pulse_on_period[ii], burst_period[ii], pulse_number[ii], trig_freq[ii], 2, 
+                    bnc=2, channel_start=4, channel_end=5)
+        if v_sweep[ii] != v:
+            v = v_sweep[ii]
+            PGen.config_pulse(pulse_voltage=v, pulse_width='in')
+            sleep(1)
+
+        sens = lna_sens_clicked.get()
+        for jj in range(n):
+            # Start with pulse measurement
+            relay.switch_relay(relay.DGEN)
+            DGen.trig_burst() # Trigger burst
+            relay.switch_relay(relay.LNA)
+            sleep(.5)
+            plot_square(meas_idx, v)
+            ax_meas.axvline(x=meas_idx-.5, c='k')
+            for kk in range(num_meas):
+                currents[pulse_idx, kk], sens = meas_current(sens, LNA, DMM,
+                                                            LNA_gui_var=curr_var, 
+                                                            Sens_gui_var=sens_var)
+                if v > 0:
+                    ax_meas.plot(meas_idx, currents[pulse_idx, kk], 'ro')
+                else:
+                    ax_meas.plot(meas_idx, currents[pulse_idx, kk], 'bo')
+                if kk > 0:
+                    plot_zero(meas_idx, v)
+                progress_var.set((meas_idx-meas_idx_inital+1)/num_bursts_total* 100)
+
+                # Pause to allow plots and progress bar to update
+                fig_in.tight_layout()
+                canvas_in.draw()
+                canvas_in.flush_events()
+                fig_meas.tight_layout()
+                canvas_meas.draw()
+                canvas_meas.flush_events()
+                sleep(0.02)
+
+                meas_idx += 1
+            pulse_idx += 1
+    LNA.set_bias(0)
+
+def save_data():
+    lna_gain = lna_gain_mode_clicked.get().replace(' ', '_')
+    lna_filter = lna_filter_clicked.get().replace(' ', '_')
+    if lna_filter != 'None':
+        filter_str = f'{lna_gain}_LP{lna_filter}{lna_filter_clicked.get()}Hz'
+    else:
+        filter_str = f'{lna_gain}_None'
+    device_name = device_name_val.get()
+    device_idx = device_idx_val.get()
+    dir_name = save_dir_val.get()
+    integ_time=dmm_integ_clicked.get()
+    title = f'{device_name}_{device_idx}_{filter_str}_Integ{integ_time}'
+
+    # Create dir if it does not exist
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name, exist_ok=True)
+    fig_meas.savefig(os.path.join(dir_name, f'{title}.png'))
+    fig_in.savefig(os.path.join(dir_name, f'{title}_pulse_figure.png'))
+
+    # Save the raw data to a directory
+    headers = ['pulse_v', 'pulse_width', 'num_applied'] + [f'i_{ii}' for ii in range(currents.shape[1])]
+    header_str = ','.join(headers)
+    save_arr = np.hstack((pulse_hist, 
+                          meas_bias_v*np.ones((currents.shape[0],1)),
+                          currents))
+    np.savetxt(os.path.join(dir_name, f'{title}.csv'), save_arr, 
+                delimiter=",",header=header_str)
 def start_scan(*args):
-   save_dir_btn['state'] = tk.DISABLED
-   pb.grid(column=0, row=1, columnspan=3, sticky='EW', padx=5, pady=5)
-   sens_label.grid(column=0, row=2, sticky='EW', padx=5, pady=5)
-   curr_label.grid(column=2, row=2, columnspan=3, sticky='EW', padx=5, pady=5)
+    # Get pulse configurations from GUI
+    pulse_on_period = parse_csl(pulse_period_val.get())
+    pulse_off_period = pulse_on_period
+    pulse_per_burst = parse_csl(pulse_per_burst_val.get()).astype(int)
+    #pulse_number = parse_csl(pulse_per_burst_val.get()).astype(int)
+    burst_period = (pulse_on_period+pulse_off_period)
+    trig_period = pulse_per_burst*(burst_period)*2
+    trig_freq = 1/trig_period
+    num_bursts = parse_csl(pulse_num_burst_val.get()).astype(int)
+
+    # Ensure that the pulse configurations are matched
+    if(len(pulse_on_period) ==  len(pulse_per_burst) == len(num_bursts)):
+        len_settings = len(pulse_on_period)
+
+        save_dir_btn['state'] = tk.DISABLED
+        pb.grid(column=0, row=1, columnspan=3, sticky='EW', padx=5, pady=5)
+        sens_label.grid(column=0, row=2, sticky='EW', padx=5, pady=5)
+        curr_label.grid(column=2, row=2, columnspan=3, sticky='EW', padx=5, pady=5)
+    else:
+        tk.messagebox.showwarning("Unmatched pulse configs", "Length of pulse config are unequal")
+        return
+    
+    # Pull parameters from GUI to initialize instruments
+    DMM.set_integ_time(dmm_integ_clicked.get())
+    lna_gain = lna_gain_mode_clicked.get().replace(' ', '_')
+    lna_filter = lna_filter_clicked.get().replace(' ', '_')
+    LNA.set_filter(lna_gain, lna_filter, lna_filter_freq_clicked.get())
+
+    # If we are not holding the previous data, reset the array and clear the plots
+    meas_per_volt = dmm_num_val.get()
+    num_bursts_total = sum(num_bursts)
+    global currents, pulse_idx, meas_idx, pulse_hist, meas_bias_v
+
+    # Get and Set bias for the LNA
+    new_bias_v = lna_bias_clicked.get()
+    is_new_bias = meas_bias_v is None or new_bias_v != meas_bias_v
+    if hold_on.get() and currents is not None and not is_new_bias:
+        if currents.shape[1] < meas_per_volt:
+            # First add additional columns to the original array
+            currents = np.hstack((currents, np.empty((meas_per_volt-currents.shape[0], 
+                                                    currents.shape[1]))))
+        sub_arr = np.empty((num_bursts_total, meas_per_volt))
+        sub_arr[:] = np.nan
+        currents = np.vstack((currents, sub_arr))
+    else:
+        meas_bias_v = new_bias_v
+        pulse_idx = 0
+        meas_idx = 0
+        ax_meas.cla()
+        ax_in.cla()
+
+        ax_meas.set_xlabel('Measurement #')
+        ax_meas.set_ylabel('Current (A)')
+        ax_meas.set_title(f'Measurement Bias = {meas_bias_v:.3}V')
+        fig_meas.tight_layout()
+
+        ax_in.set_xlabel('Measurement #')
+        ax_in.set_ylabel('Pulse Voltage (V)')
+        fig_in.tight_layout()
+
+        currents = np.empty((num_bursts_total, meas_per_volt))
+        currents[:] = np.nan
+    
+    # Iterate through each pulse setting in the list
+    v_sweep = parse_csl(pulse_v_val.get())
+    pulse_train(v_sweep, pulse_on_period, burst_period, pulse_per_burst, trig_freq, num_bursts)
+    # Add array to pulse history
+    pulse_config_arr = np.ones((num_bursts_total, 3))
+    for ii in range(len(v_sweep)):
+        idx_range = list(range(ii*num_bursts[ii],(ii+1)*num_bursts[ii]))
+        pulse_config_arr[idx_range, 0] = v_sweep[ii]
+        pulse_config_arr[idx_range, 1] = pulse_on_period[ii]
+        pulse_config_arr[idx_range, 2] = pulse_per_burst[ii]
+
+    if pulse_hist is None:
+        pulse_hist = pulse_config_arr
+    else:
+        pulse_hist = np.concatenate((pulse_hist, pulse_config_arr))
+    
+    save_data()
+
+    # Increment index
+    device_idx_val.set(device_idx_val.get()+1)
+    save_dir_btn['state'] = tk.NORMAL
+    pb.grid_remove()
+    sens_label.grid_remove()
+    curr_label.grid_remove()
+        
+# Intialize Instruments
+relay = relay_inter.relay_inter()
+relay.switch_relay(relay.NONE) # Close relay during setup
+DGen = DG645.DG645()
+DMM = A34410A.A34410A()
+LNA = SR570.SR570()
+PGen = AV1010B.AV1010B()
+PGen.set_trigger('EXT')
+
+# Initial global variables
+currents = None
+meas_idx = None
+pulse_idx = None
+pulse_hist = None
+meas_bias_v = None
 
 root = tk.Tk()
 root.state('zoomed')
@@ -59,7 +289,7 @@ save_dir_entry = tk.Entry(device_frame, text=save_dir_val, width=50)
 save_dir_entry.grid(column=0, row=2, columnspan=2, sticky=tk.W, padx=5, pady=5)
 now = datetime.now()
 date = now.strftime('%Y-%m-%d')
-save_dir_val.set(os.path.join('.', 'Measurements', date))
+save_dir_val.set(os.path.join('.', 'Measurements','Pulse', date))
 # Device Name
 device_name_label = tk.Label(device_frame, text='Device Name')
 device_name_label.grid(column=0, row=3, sticky=tk.W, padx=5, pady=5)
@@ -70,10 +300,10 @@ device_name_val.set('FIB1_A1')
 # Meas Idx
 device_idx_label = tk.Label(device_frame, text='Index')
 device_idx_label.grid(column=0, row=4, sticky=tk.W, padx=5, pady=5)
-device_idx_val = tk.StringVar()
+device_idx_val = tk.IntVar()
 device_idx_meas = tk.Entry(device_frame, text=device_idx_val, width=20)
 device_idx_meas.grid(column=1, row=4, sticky=tk.E, padx=5, pady=5)
-device_idx_val.set('0')
+device_idx_val.set(0)
 
 ## LNA Options
 lna_frame = tk.Frame(dashboard_frame, bd=2, width=375)
@@ -86,7 +316,7 @@ lna_gain_mode_label = tk.Label(lna_frame, text='Gain Mode')
 lna_gain_mode_label.grid(column=0, row=1, sticky=tk.W, padx=5, pady=5)
 lna_gain_mode_options = [m.replace('_', ' ') for m in list(SR570.SR570.gain_modes.keys())]
 lna_gain_mode_clicked = tk.StringVar()
-lna_gain_mode_clicked.set(lna_gain_mode_options[1])
+lna_gain_mode_clicked.set(lna_gain_mode_options[2])
 lna_gain_mode_menu = tk.OptionMenu(lna_frame, lna_gain_mode_clicked ,*lna_gain_mode_options)
 lna_gain_mode_menu.config(width=len(max(lna_gain_mode_options)))
 lna_gain_mode_menu.grid(column=1, row=1, sticky=tk.E, padx=5, pady=5)
@@ -103,7 +333,7 @@ lna_filter_menu.grid(column=1, row=2, sticky=tk.E, padx=5, pady=5)
 lna_filter_freq_label = tk.Label(lna_frame, text='LP Cutoff Frequency (Hz)')
 lna_filter_freq_label.grid(column=0, row=3, sticky=tk.W, padx=5, pady=5)
 lna_filter_freq_options = [f'{f}' for f in SR570.SR570.filter_freqs]
-lna_filter_freq_clicked = tk.StringVar()
+lna_filter_freq_clicked = tk.DoubleVar()
 lna_filter_freq_clicked.set(lna_filter_freq_options[3])
 lna_filter_freq_menu = tk.OptionMenu(lna_frame, lna_filter_freq_clicked ,*lna_filter_freq_options)
 lna_filter_freq_menu.grid(column=1, row=3, sticky=tk.E, padx=5, pady=5)
@@ -111,10 +341,17 @@ lna_filter_freq_menu.grid(column=1, row=3, sticky=tk.E, padx=5, pady=5)
 lna_sens_label = tk.Label(lna_frame, text='Initial Sensitivity')
 lna_sens_label.grid(column=0, row=4, sticky=tk.W, padx=5, pady=5)
 lna_sens_options = list(range(len(SR570.SR570.sens_table)))
-lna_sens_clicked = tk.StringVar()
+lna_sens_clicked = tk.IntVar()
 lna_sens_clicked.set(lna_sens_options[0])
 lna_sens_menu = tk.OptionMenu(lna_frame, lna_sens_clicked ,*lna_sens_options)
 lna_sens_menu.grid(column=1, row=4, sticky=tk.E, padx=5, pady=5)
+# LNA bias during measurement
+lna_bias_label = tk.Label(lna_frame, text='LNA Measurement Bias (V)')
+lna_bias_label.grid(column=0, row=5, sticky=tk.W, padx=5, pady=5)
+lna_bias_clicked = tk.DoubleVar()
+lna_bias_clicked.set(0.2)
+lna_bias_menu =  tk.Entry(lna_frame, text=lna_bias_clicked, width=20)
+lna_bias_menu.grid(column=1, row=5, sticky=tk.E, padx=5, pady=5)
 # Offset correction
 lna_offset = tk.BooleanVar()
 lna_offset_check = tk.Checkbutton(lna_frame, text='Offset Correction', variable=lna_offset)
@@ -130,7 +367,7 @@ tk.Label(dmm_frame, text='DMM', font=('Arial',12)).grid(column=0, row=0, sticky=
 dmm_integ_label = tk.Label(dmm_frame, text='Integration Time (* 1/60 s)')
 dmm_integ_label.grid(column=0, row=1, sticky=tk.W, padx=5, pady=5)
 dmm_integ_options = A34410A.A34410A.integ_times
-dmm_integ_clicked = tk.StringVar()
+dmm_integ_clicked = tk.DoubleVar()
 dmm_integ_clicked.set(dmm_integ_options[4])
 dmm_integ_menu = tk.OptionMenu(dmm_frame, dmm_integ_clicked ,*dmm_integ_options)
 dmm_integ_menu.grid(column=1, row=1, sticky=tk.E, padx=5, pady=5)
@@ -181,10 +418,10 @@ pulse_per_burst_meas.grid_columnconfigure(1, weight=1)
 pulse_per_burst_val.set('100, 100')
 # Number of Bursts
 pulse_num_burst_label = tk.Label(pulse_frame, text='Number of Bursts')
-pulse_num_burst_label.grid(column=0, row=4, sticky=tk.W, padx=5, pady=25)
+pulse_num_burst_label.grid(column=0, row=4, sticky=tk.W+tk.N, padx=5, pady=5)
 pulse_num_burst_val = tk.StringVar()
 pulse_num_burst_meas = tk.Entry(pulse_frame, text=pulse_num_burst_val, width=25)
-pulse_num_burst_meas.grid(column=1, row=4, sticky=tk.E+tk.W, padx=5, pady=5)
+pulse_num_burst_meas.grid(column=1, row=4, sticky=tk.E+tk.W+tk.N, padx=5, pady=5)
 pulse_num_burst_meas.grid_columnconfigure(1, weight=1)
 pulse_num_burst_val.set('15, 15')
 
@@ -197,10 +434,13 @@ ft = font.Font(size='14', weight='bold')
 save_dir_btn = tk.Button(plot_frame, text='Start Pulsing', command=start_scan, font=ft)
 save_dir_btn.grid(column=0, row=0, columnspan=3, sticky='EW', padx=5, pady=5)
 # Progress bar for the scan
-pb = ttk.Progressbar(plot_frame, orient='horizontal', mode='determinate')
+progress_var = tk.DoubleVar()
+pb = ttk.Progressbar(plot_frame, orient='horizontal', mode='determinate', variable=progress_var)
 # Labels for the current sens and current
-sens_label = tk.Label(plot_frame)
-curr_label = tk.Label(plot_frame)
+sens_var = tk.StringVar()
+curr_var = tk.StringVar()
+sens_label = tk.Label(plot_frame, textvariable=sens_var)
+curr_label = tk.Label(plot_frame, textvariable=curr_var)
 
 # Keep previous plots
 hold_on = tk.BooleanVar()

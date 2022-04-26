@@ -33,7 +33,7 @@ dir_name = f"C:\\Users\\Lab User\\Documents\\Memristor\\Measurements\\Device Exp
 if not os.path.exists(dir_name):
     os.mkdir(dir_name)
 array_name = 'FIB1'
-device_name = 'C10_CircularPad'
+device_name = 'A9-05-CircularPad'
 
 v_max = 200
 v_step = 20
@@ -140,42 +140,51 @@ for colormap, steps in zip([cm.Purples, cm.Blues, cm.Greens, cm.Oranges], num_st
     color = unique_colors.flatten().reshape(-1, 4)
     sweep_colors = np.vstack((sweep_colors, color))
 f1, (ax1,ax2) = plt.subplots(2,1)
+f3, (ax3) = plt.subplots(1,1)
 for ii in tqdm(range(bias_v.shape[0])):
     for jj in range(bias.shape[1]):
         if jj == 0 and changed_sens[ii, jj]:
             ax1.plot(ii*bias.shape[1]+jj, bias[ii,jj], 'X', c=sweep_colors[ii])
             ax2.plot(ii*bias.shape[1]+jj,bias_v[ii], 'X', c=sweep_colors[ii])
+            ax3.plot(ii*bias.shape[1]+jj,-bias_v[ii]/(1000*bias[ii,jj]),'X',c=sweep_colors[ii])
         else:
             ax1.plot(ii*bias.shape[1]+jj, bias[ii,jj], '.', c=sweep_colors[ii])
             ax2.plot(ii*bias.shape[1]+jj,bias_v[ii], '.', c=sweep_colors[ii])
+            ax3.plot(ii*bias.shape[1]+jj,-bias_v[ii]/(1000*bias[ii,jj]),'.',c=sweep_colors[ii])
 
 ax1.set_xlabel(f'Meas #')
 ax2.set_xlabel(f'Meas #')
 ax1.set_ylabel('Open Current (A)')
 ax2.set_ylabel('Bias Voltage (mV)')
+ax3.set_xlabel(f'Meas #')
+ax3.set_ylabel('Resistance (Ohms)')
 if filter_type is not None:
     ax1.set_title(f'{array_name}_{device_name} - Filter Type: {filter_type}, Filter Freq: {filter_freq} Hz, Integ time: {integ_time}/60 s')
 else:
     ax1.set_title(f'{array_name}_{device_name} - Filter Type: None, Integ time:  {integ_time}/60 s')
 ax1.grid()
 ax2.grid()
+ax3.grid()
 ax1.set_xlim([0, bias.shape[1]*bias.shape[0]])
 ax2.set_xlim([0, bias.shape[1]*bias.shape[0]])
+ax3.set_xlim([0, bias.shape[1]*bias.shape[0]])
+ax3.set_yscale('log')
 #plt.yscale('symlog', linthresh=1e-12, linscale=1)
 #plt.ylim([-2.5, 2.5])
 #ax1.set_yscale('log')
 #ax2.set_yscale('log')
 
 # Get current axis and add labels for the voltages
-ax1 = plt.gca()
-ax2 = ax1.twiny()
-ax2.set_xlim(ax1.get_xlim())
+#ax1 = plt.gca()
+ax1_p = ax1.twiny()
+ax1_p.set_xlim(ax1_p.get_xlim())
 tick_pos = np.hstack(([0], np.cumsum(num_steps)*bias.shape[1]))
 tick_labels = ["0V", f'{v_max/1000}V', "0V", f'-{v_max/1000}V', '0V']
-ax2.set_xticks(tick_pos)
-ax2.set_xticklabels(tick_labels)
+ax1_p.set_xticks(tick_pos)
+ax1_p.set_xticklabels(tick_labels)
 
-plt.tight_layout()
+f1.tight_layout()
+f3.tight_layout()
 
 f2 = plt.figure()
 for ii in tqdm(range(bias_v.shape[0])):
@@ -206,6 +215,7 @@ else:
 title = f'{array_name}_{device_name}_{filter_str}_Integ{integ_time}'
 f1.savefig(os.path.join(dir_name, f'{title}.png'))
 f2.savefig(os.path.join(dir_name, f'{title}_alt.png'))
+f3.savefig(os.path.join(dir_name,f'{title}_res.png'))
 
 save_arr = np.hstack((np.expand_dims(bias_v, 1), bias))
 np.savetxt(os.path.join(dir_name, f'{title}.csv'), save_arr, delimiter=",")
