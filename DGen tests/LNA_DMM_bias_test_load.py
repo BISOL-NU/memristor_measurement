@@ -33,7 +33,7 @@ dir_name = f"C:\\Users\\Lab User\\Documents\\Memristor\\Measurements\\Device Exp
 if not os.path.exists(dir_name):
     os.mkdir(dir_name)
 array_name = 'FIB1'
-device_name = 'A9-05-CircularPad'
+device_name = 'E9_Undoped'
 
 v_max = 200
 v_step = 20

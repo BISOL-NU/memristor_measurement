@@ -21,16 +21,29 @@ def parse_csl(str):
     return np.array([float(sub.strip()) for sub in sub_strs])
 
 def replot():  
+    ax_meas.cla()
+    ax_meas.set_xlabel('Measurement #')
+    ax_meas.set_ylabel('Current (A)')
+    ax_in.cla()
+    ax_in.set_xlabel('Measurement #')
+    ax_in.set_ylabel('Pulse Voltage (V)')
+
     meas_local_idx = 0
-    for ii in range(currents.shape[0]):
-        v = pulse_hist[ii]
+    #pulse_local_idx = 0
+    for ii in range(min(currents.shape[0], pulse_hist.shape[0])):
+        ax_meas.axvline(x=meas_local_idx-.5, c='k')
+        v = pulse_hist[ii,0]
         for jj in range(currents.shape[1]):
             if currents[ii, jj] != np.NAN:
                 if v > 0:
-                    ax_meas.plot(meas_idx, currents[ii, jj], 'ro')
+                    ax_meas.plot(meas_local_idx, currents[ii, jj], 'ro')
                 else:
-                    ax_meas.plot(meas_idx, currents[ii, jj], 'bo')
-                plot_square(meas_idx, v)
+                    ax_meas.plot(meas_local_idx, currents[ii, jj], 'bo')
+                # Plot Pulses
+                if jj == 0:
+                    plot_square(meas_local_idx, v)
+                else:
+                    plot_zero(meas_local_idx, v)
                 meas_local_idx += 1
 
     fig_meas.tight_layout()
@@ -55,6 +68,7 @@ def scale_change(*args):
             return
         ax_meas.set_yscale(val, linthreshy=linthresh)
     else:
+        replot()
         plot_linthresh_meas.grid_remove()
         plot_linthresh_label.grid_remove()
         ax_meas.set_yscale(val)
@@ -157,7 +171,7 @@ def save_data():
     fig_in.savefig(os.path.join(dir_name, f'{title}_pulse_figure.png'))
 
     # Save the raw data to a directory
-    headers = ['pulse_v', 'pulse_width', 'num_applied'] + [f'i_{ii}' for ii in range(currents.shape[1])]
+    headers = ['pulse_v', 'pulse_width', 'num_applied', 'meas_v'] + [f'i_{ii}' for ii in range(currents.shape[1])]
     header_str = ','.join(headers)
     save_arr = np.hstack((pulse_hist, 
                           meas_bias_v*np.ones((currents.shape[0],1)),

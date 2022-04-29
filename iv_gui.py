@@ -21,7 +21,7 @@ def replot(curr, bias_v):
       #color = np.array([unique_colors] * ceil(steps/100))
       color = unique_colors.flatten().reshape(-1, 4)
       sweep_colors = np.vstack((sweep_colors, color))
-      
+   global bias
    for ii in range(curr.shape[0]):
       for jj in range(curr.shape[1]):
          ax_seq_v.plot(ii*curr.shape[1]+jj, bias_v[ii], 
