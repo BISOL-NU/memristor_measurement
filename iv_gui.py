@@ -44,8 +44,8 @@ def scale_change(*args):
       return
 
    if val == 'symlog':
-      plot_linthresh_meas.grid(column=2, row=4, sticky=tk.E, padx=5, pady=5)
-      plot_linthresh_label.grid(column=0, row=4, sticky=tk.W, padx=5, pady=5)
+      plot_linthresh_meas.grid(column=2, row=5, sticky=tk.E, padx=5, pady=5)
+      plot_linthresh_label.grid(column=0, row=5, sticky=tk.W, padx=5, pady=5)
       try:
          linthresh = plot_linthresh_val.get()
       except:
@@ -115,6 +115,12 @@ def iv_sweep(delay=.1):
       t = time()
       while True:
          for jj in range(curr.shape[1]):
+            if e_stop:
+               relay.switch_relay(relay.NONE)
+               relay.switch_relay(relay.LNA)
+               LNA.set_bias(0)
+               return curr, bias_v, time_spent, curr_floor_mean
+
             curr[ii, jj], sens_out = meas_current(sens, LNA, DMM, delay,
                                                   LNA_gui_var=curr_var, 
                                                   Sens_gui_var=sens_var)
@@ -163,10 +169,13 @@ def iv_sweep(delay=.1):
 
 def start_scan(*args):
    save_dir_btn['state'] = tk.DISABLED
-   pb.grid(column=0, row=1, columnspan=3, sticky='EW', padx=5, pady=5)
-   sens_label.grid(column=0, row=2, sticky='EW', padx=5, pady=5)
-   curr_label.grid(column=2, row=2, columnspan=3, sticky='EW', padx=5, pady=5)
+   stop_btn.grid(column=0, row=1, columnspan=3, sticky='EW', padx=5, pady=5)
+   pb.grid(column=0, row=2, columnspan=3, sticky='EW', padx=5, pady=5)
+   sens_label.grid(column=0, row=3, sticky='EW', padx=5, pady=5)
+   curr_label.grid(column=2, row=3, columnspan=3, sticky='EW', padx=5, pady=5)
 
+   global e_stop
+   e_stop = False
    # Clear axes if hold is not on
    if not hold_on.get():
       ax_seq.cla()
@@ -226,6 +235,7 @@ def start_scan(*args):
    pb.grid_remove()
    sens_label.grid_remove()
    curr_label.grid_remove()
+   stop_btn.grid_remove()
 
 # Intialize Instruments
 relay = relay_inter.relay_inter()
@@ -239,6 +249,7 @@ root.title('IV Sweep GUI')
 curr = None # Initialize outside of function so that we can change the scaling
 bias_v = None
 num_steps = None
+e_stop = False
 
 ## Device options
 device_frame = tk.Frame(root, bd=2, width=450)
@@ -391,6 +402,11 @@ sens_var = tk.StringVar()
 curr_var = tk.StringVar()
 sens_label = tk.Label(plot_frame, textvariable=sens_var)
 curr_label = tk.Label(plot_frame, textvariable=curr_var)
+def set_e_stop():
+    global e_stop
+    e_stop = True
+stop_btn = tk.Button(plot_frame, text='Stop', command=set_e_stop, 
+                    bg='red', fg='white', font=ft)
 # Keep previous plots
 hold_on = tk.BooleanVar()
 plot_hold_on_check = tk.Checkbutton(plot_frame, text='Hold On', variable=hold_on)

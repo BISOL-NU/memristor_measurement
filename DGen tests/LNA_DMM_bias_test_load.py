@@ -32,8 +32,8 @@ date = now.strftime('%Y-%m-%d')
 dir_name = f"C:\\Users\\Lab User\\Documents\\Memristor\\Measurements\\Device Exploration\\{date}"
 if not os.path.exists(dir_name):
     os.mkdir(dir_name)
-array_name = 'FIB1'
-device_name = 'E9_Undoped'
+array_name = 'FIB3'
+device_name = 'A2_50_Sweep1_2'
 
 v_max = 200
 v_step = 20
@@ -146,11 +146,11 @@ for ii in tqdm(range(bias_v.shape[0])):
         if jj == 0 and changed_sens[ii, jj]:
             ax1.plot(ii*bias.shape[1]+jj, bias[ii,jj], 'X', c=sweep_colors[ii])
             ax2.plot(ii*bias.shape[1]+jj,bias_v[ii], 'X', c=sweep_colors[ii])
-            ax3.plot(ii*bias.shape[1]+jj,-bias_v[ii]/(1000*bias[ii,jj]),'X',c=sweep_colors[ii])
+            ax3.plot(ii*bias.shape[1]+jj,abs(bias_v[ii]/(1000*bias[ii,jj])),'X',c=sweep_colors[ii])
         else:
             ax1.plot(ii*bias.shape[1]+jj, bias[ii,jj], '.', c=sweep_colors[ii])
             ax2.plot(ii*bias.shape[1]+jj,bias_v[ii], '.', c=sweep_colors[ii])
-            ax3.plot(ii*bias.shape[1]+jj,-bias_v[ii]/(1000*bias[ii,jj]),'.',c=sweep_colors[ii])
+            ax3.plot(ii*bias.shape[1]+jj,abs(bias_v[ii]/(1000*bias[ii,jj])),'.',c=sweep_colors[ii])
 
 ax1.set_xlabel(f'Meas #')
 ax2.set_xlabel(f'Meas #')
@@ -221,4 +221,3 @@ save_arr = np.hstack((np.expand_dims(bias_v, 1), bias))
 np.savetxt(os.path.join(dir_name, f'{title}.csv'), save_arr, delimiter=",")
 
 plt.show()
-a=1

@@ -1,3 +1,4 @@
+from glob import glob
 import tkinter as tk
 from tkinter import filedialog, ttk, font
 from turtle import color
@@ -21,9 +22,11 @@ def parse_csl(str):
     return np.array([float(sub.strip()) for sub in sub_strs])
 
 def replot():  
+    global meas_bias_v
     ax_meas.cla()
     ax_meas.set_xlabel('Measurement #')
     ax_meas.set_ylabel('Current (A)')
+    ax_meas.set_title(f'Measurement Bias = {meas_bias_v:.3}V')
     ax_in.cla()
     ax_in.set_xlabel('Measurement #')
     ax_in.set_ylabel('Pulse Voltage (V)')
@@ -60,13 +63,13 @@ def scale_change(*args):
         return
 
     if val == 'symlog':
-        plot_linthresh_meas.grid(column=2, row=4, sticky=tk.E, padx=5, pady=5)
-        plot_linthresh_label.grid(column=0, row=4, sticky=tk.W, padx=5, pady=5)
+        plot_linthresh_meas.grid(column=2, row=5, sticky=tk.E, padx=5, pady=5)
+        plot_linthresh_label.grid(column=0, row=5, sticky=tk.W, padx=5, pady=5)
         try:
             linthresh = plot_linthresh_val.get()
         except:
             return
-        ax_meas.set_yscale(val, linthreshy=linthresh)
+        ax_meas.set_yscale(val, linthresh=linthresh)
     else:
         replot()
         plot_linthresh_meas.grid_remove()
@@ -105,7 +108,8 @@ def pulse_train(v_sweep,
     sleep(1)
     num_meas = dmm_num_val.get()
     num_bursts_total = sum([n*num_meas for n in num_bursts])
-    global pulse_idx, meas_idx, currents
+    global pulse_idx, meas_idx, currents, e_stop
+    e_stop = False
     meas_idx_inital = meas_idx
     for ii, n in enumerate(num_bursts):
         DGen.config_burst(pulse_on_period[ii], burst_period[ii], pulse_number[ii], trig_freq[ii], 2, 
@@ -127,6 +131,12 @@ def pulse_train(v_sweep,
             plot_square(meas_idx, v)
             ax_meas.axvline(x=meas_idx-.5, c='k')
             for kk in range(num_meas):
+                # Check for stop condition
+                if e_stop:
+                    relay.switch_relay(relay.NONE)
+                    LNA.set_bias(0)
+                    return
+
                 currents[pulse_idx, kk], sens = meas_current(sens, LNA, DMM,
                                                             LNA_gui_var=curr_var, 
                                                             Sens_gui_var=sens_var)
@@ -194,12 +204,14 @@ def start_scan(*args):
         len_settings = len(pulse_on_period)
 
         save_dir_btn['state'] = tk.DISABLED
-        pb.grid(column=0, row=1, columnspan=3, sticky='EW', padx=5, pady=5)
-        sens_label.grid(column=0, row=2, sticky='EW', padx=5, pady=5)
-        curr_label.grid(column=2, row=2, columnspan=3, sticky='EW', padx=5, pady=5)
+        pb.grid(column=0, row=2, columnspan=3, sticky='EW', padx=5, pady=5)
+        stop_btn.grid(column=0, row=1, columnspan=3, sticky='EW', padx=5, pady=5)
+        sens_label.grid(column=0, row=3, sticky='EW', padx=5, pady=5)
+        curr_label.grid(column=2, row=3, columnspan=3, sticky='EW', padx=5, pady=5)
     else:
         tk.messagebox.showwarning("Unmatched pulse configs", "Length of pulse config are unequal")
         return
+    sleep(.02)
     
     # Pull parameters from GUI to initialize instruments
     DMM.set_integ_time(dmm_integ_clicked.get())
@@ -266,6 +278,7 @@ def start_scan(*args):
     pb.grid_remove()
     sens_label.grid_remove()
     curr_label.grid_remove()
+    stop_btn.grid_remove()
         
 # Intialize Instruments
 relay = relay_inter.relay_inter()
@@ -282,6 +295,7 @@ meas_idx = None
 pulse_idx = None
 pulse_hist = None
 meas_bias_v = None
+e_stop = False
 
 root = tk.Tk()
 root.state('zoomed')
@@ -364,12 +378,12 @@ lna_bias_label = tk.Label(lna_frame, text='LNA Measurement Bias (V)')
 lna_bias_label.grid(column=0, row=5, sticky=tk.W, padx=5, pady=5)
 lna_bias_clicked = tk.DoubleVar()
 lna_bias_clicked.set(0.2)
-lna_bias_menu =  tk.Entry(lna_frame, text=lna_bias_clicked, width=20)
+lna_bias_menu =  tk.Entry(lna_frame, text=lna_bias_clicked, width=10)
 lna_bias_menu.grid(column=1, row=5, sticky=tk.E, padx=5, pady=5)
 # Offset correction
 lna_offset = tk.BooleanVar()
 lna_offset_check = tk.Checkbutton(lna_frame, text='Offset Correction', variable=lna_offset)
-lna_offset_check.grid(column=0, row=5, columnspan=2, padx=5, pady=5)
+lna_offset_check.grid(column=0, row=6, columnspan=2, padx=5, pady=5)
 
 ## DMM Options
 dmm_frame = tk.Frame(dashboard_frame, bd=2, width=375)
@@ -455,12 +469,17 @@ sens_var = tk.StringVar()
 curr_var = tk.StringVar()
 sens_label = tk.Label(plot_frame, textvariable=sens_var)
 curr_label = tk.Label(plot_frame, textvariable=curr_var)
+def set_e_stop():
+    global e_stop
+    e_stop = True
+stop_btn = tk.Button(plot_frame, text='Stop', command=set_e_stop, 
+                    bg='red', fg='white', font=ft)
 
 # Keep previous plots
 hold_on = tk.BooleanVar()
 plot_hold_on_check = tk.Checkbutton(plot_frame, text='Hold On', variable=hold_on)
 hold_on.set(True)
-plot_hold_on_check.grid(column=0, row=3, padx=5, pady=5)
+plot_hold_on_check.grid(column=0, row=4, padx=5, pady=5)
 # Set linthresh for symlog
 plot_linthresh_label = tk.Label(plot_frame, text='Symlog linthresh')
 plot_linthresh_val = tk.DoubleVar()
@@ -468,13 +487,13 @@ plot_linthresh_meas = tk.Entry(plot_frame, text=plot_linthresh_val, width=10)
 plot_linthresh_val.set(1e-9)
 # Plot Scale
 plot_scale_label = tk.Label(plot_frame, text='Y-Scale')
-plot_scale_label.grid(column=1, row=3, sticky=tk.W, padx=5, pady=5)
+plot_scale_label.grid(column=1, row=4, sticky=tk.W, padx=5, pady=5)
 plot_scale_options = ['linear', 'log', 'symlog']
 plot_scale_clicked = tk.StringVar()
 plot_scale_clicked.set(plot_scale_options[0])
 plot_scale_menu = tk.OptionMenu(plot_frame, plot_scale_clicked ,*plot_scale_options)
 plot_scale_menu.config(width=6)
-plot_scale_menu.grid(column=2, row=3, sticky=tk.E, padx=5, pady=5)
+plot_scale_menu.grid(column=2, row=4, sticky=tk.E, padx=5, pady=5)
 
 plot_linthresh_val.trace('w', scale_change)
 plot_scale_clicked.trace('w', scale_change)
