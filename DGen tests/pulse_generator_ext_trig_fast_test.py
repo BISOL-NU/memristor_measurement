@@ -7,11 +7,11 @@ from time import sleep
 
 PGen = AV1010B.AV1010B()
 PGen.set_trigger('EXT')
-PGen.config_pulse(pulse_voltage=10, pulse_width='in')
+PGen.config_pulse(pulse_voltage=2, pulse_width='in')
 
-pulse_on_period = 500e-9
+pulse_on_period = 50e-9
 pulse_off_period = pulse_on_period
-pulse_number = 100
+pulse_number = 1000
 burst_period = (pulse_on_period+pulse_off_period)
 trig_period = pulse_number*(burst_period)*2
 trig_freq = 1/trig_period

@@ -54,7 +54,8 @@ def scale_change(*args):
       ax_iv.set_yscale(val, linthreshy=linthresh)
       replot(curr, bias_v)
    elif val == 'log':
-      replot(abs(curr), bias_v)
+      if curr is not None and bias_v is not None:
+         replot(abs(curr), bias_v)
       plot_linthresh_meas.grid_remove()
       plot_linthresh_label.grid_remove()
       ax_seq.set_yscale(val)

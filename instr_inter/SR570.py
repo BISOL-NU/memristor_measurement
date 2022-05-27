@@ -60,7 +60,7 @@ class SR570:
     def set_sens(self, sens, delay=.1):
         assert(sens >=0 and sens < 28)
         self.sens = sens
-        self.write(f'SENS {sens}', delay)
+        self.write(f'SENS {int(sens)}', delay)
         sleep(.5)
 
     def set_bias(self, bias=200, delay=.5):

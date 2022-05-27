@@ -1,7 +1,6 @@
 from glob import glob
 import tkinter as tk
 from tkinter import filedialog, ttk, font
-from turtle import color
 import matplotlib.backends.backend_tkagg as mplTk
 import matplotlib.pyplot as plt
 from matplotlib import rc, cm
@@ -26,28 +25,30 @@ def replot():
     ax_meas.cla()
     ax_meas.set_xlabel('Measurement #')
     ax_meas.set_ylabel('Current (A)')
-    ax_meas.set_title(f'Measurement Bias = {meas_bias_v:.3}V')
+    if meas_bias_v is not None:
+        ax_meas.set_title(f'Measurement Bias = {meas_bias_v:.3}V')
     ax_in.cla()
     ax_in.set_xlabel('Measurement #')
     ax_in.set_ylabel('Pulse Voltage (V)')
 
     meas_local_idx = 0
     #pulse_local_idx = 0
-    for ii in range(min(currents.shape[0], pulse_hist.shape[0])):
-        ax_meas.axvline(x=meas_local_idx-.5, c='k')
-        v = pulse_hist[ii,0]
-        for jj in range(currents.shape[1]):
-            if currents[ii, jj] != np.NAN:
-                if v > 0:
-                    ax_meas.plot(meas_local_idx, currents[ii, jj], 'ro')
-                else:
-                    ax_meas.plot(meas_local_idx, currents[ii, jj], 'bo')
-                # Plot Pulses
-                if jj == 0:
-                    plot_square(meas_local_idx, v)
-                else:
-                    plot_zero(meas_local_idx, v)
-                meas_local_idx += 1
+    if currents is not None and pulse_hist is not None:
+        for ii in range(min(currents.shape[0], pulse_hist.shape[0])):
+            ax_meas.axvline(x=meas_local_idx-.5, c='k')
+            v = pulse_hist[ii,0]
+            for jj in range(currents.shape[1]):
+                if currents[ii, jj] != np.NAN:
+                    if v > 0:
+                        ax_meas.plot(meas_local_idx, currents[ii, jj], 'ro')
+                    else:
+                        ax_meas.plot(meas_local_idx, currents[ii, jj], 'bo')
+                    # Plot Pulses
+                    if jj == 0:
+                        plot_square(meas_local_idx, v)
+                    else:
+                        plot_zero(meas_local_idx, v)
+                    meas_local_idx += 1
 
     fig_meas.tight_layout()
     fig_in.tight_layout()
@@ -57,14 +58,15 @@ def replot():
     canvas_meas.flush_events()
     
 def scale_change(*args):
+    global plot_yscale_clicked
     try:
         val = plot_scale_clicked.get()
     except:
         return
 
     if val == 'symlog':
-        plot_linthresh_meas.grid(column=2, row=5, sticky=tk.E, padx=5, pady=5)
-        plot_linthresh_label.grid(column=0, row=5, sticky=tk.W, padx=5, pady=5)
+        plot_linthresh_meas.grid(column=2, row=6, sticky=tk.E, padx=5, pady=5)
+        plot_linthresh_label.grid(column=0, row=6, sticky=tk.W, padx=5, pady=5)
         try:
             linthresh = plot_linthresh_val.get()
         except:
@@ -127,7 +129,7 @@ def pulse_train(v_sweep,
             relay.switch_relay(relay.DGEN)
             DGen.trig_burst() # Trigger burst
             relay.switch_relay(relay.LNA)
-            sleep(.5)
+            sleep(1)
             plot_square(meas_idx, v)
             ax_meas.axvline(x=meas_idx-.5, c='k')
             for kk in range(num_meas):
@@ -207,7 +209,7 @@ def start_scan(*args):
         pb.grid(column=0, row=2, columnspan=3, sticky='EW', padx=5, pady=5)
         stop_btn.grid(column=0, row=1, columnspan=3, sticky='EW', padx=5, pady=5)
         sens_label.grid(column=0, row=3, sticky='EW', padx=5, pady=5)
-        curr_label.grid(column=2, row=3, columnspan=3, sticky='EW', padx=5, pady=5)
+        curr_label.grid(column=2, row=3, sticky='EW', padx=5, pady=5)
     else:
         tk.messagebox.showwarning("Unmatched pulse configs", "Length of pulse config are unequal")
         return
@@ -245,10 +247,14 @@ def start_scan(*args):
         ax_meas.set_xlabel('Measurement #')
         ax_meas.set_ylabel('Current (A)')
         ax_meas.set_title(f'Measurement Bias = {meas_bias_v:.3}V')
+        ax_meas.relim()
+        ax_meas.autoscale_view()
         fig_meas.tight_layout()
 
         ax_in.set_xlabel('Measurement #')
         ax_in.set_ylabel('Pulse Voltage (V)')
+        ax_in.relim()
+        ax_in.autoscale_view()
         fig_in.tight_layout()
 
         currents = np.empty((num_bursts_total, meas_per_volt))
@@ -259,13 +265,15 @@ def start_scan(*args):
     pulse_train(v_sweep, pulse_on_period, burst_period, pulse_per_burst, trig_freq, num_bursts)
     # Add array to pulse history
     pulse_config_arr = np.ones((num_bursts_total, 3))
+    start_idx = 0
     for ii in range(len(v_sweep)):
-        idx_range = list(range(ii*num_bursts[ii],(ii+1)*num_bursts[ii]))
+        idx_range = list(range(start_idx, start_idx+num_bursts[ii]))
         pulse_config_arr[idx_range, 0] = v_sweep[ii]
         pulse_config_arr[idx_range, 1] = pulse_on_period[ii]
         pulse_config_arr[idx_range, 2] = pulse_per_burst[ii]
+        start_idx += num_bursts[ii]
 
-    if pulse_hist is None:
+    if pulse_hist is None or not hold_on.get():
         pulse_hist = pulse_config_arr
     else:
         pulse_hist = np.concatenate((pulse_hist, pulse_config_arr))
