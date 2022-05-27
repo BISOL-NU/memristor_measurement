@@ -143,7 +143,7 @@ def retention_scan(delay=.1):
                                                             LNA_gui_var=curr_var, 
                                                             Sens_gui_var=sens_var)
          actual_time[m_idx, t_idx] = time()-t
-         meas_res = bias_v / meas_curr[m_idx, t_idx]
+         meas_res[m_idx, t_idx] = bias_v / meas_curr[m_idx, t_idx]
 
          # Update the plots
          if plot_yscale_clicked.get() == 'log':
@@ -151,31 +151,44 @@ def retention_scan(delay=.1):
          else:
             curr_plot = meas_curr[m_idx, t_idx]
 
-         ax_curr.plot(actual_time[m_idx, t_idx], curr_plot-curr_floor_mean, 'k.')
-         ax_res.plot(actual_time[m_idx, t_idx], bias_v/(curr_plot-curr_floor_mean), 'k.')
+         if show_data.get():
+            ax_curr.plot(actual_time[m_idx, t_idx], curr_plot-curr_floor_mean, 'k.')
+            ax_res.plot(actual_time[m_idx, t_idx], bias_v/(curr_plot-curr_floor_mean), 'k.')
 
 
          if sens_out != sens:
                sens = sens_out
       
-      fig_curr.tight_layout()
-      fig_res.tight_layout()
-      canvas_curr.draw()
-      canvas_res.draw()
-      canvas_curr.flush_events()
-      canvas_res.flush_events()
+      if show_data.get():
+         fig_curr.tight_layout()
+         fig_res.tight_layout()
+         canvas_curr.draw()
+         canvas_res.draw()
+         canvas_curr.flush_events()
+         canvas_res.flush_events()
 
       progress_var.set((t_idx+1)/num_time_steps* 100)
       root.update_idletasks()
 
    relay.switch_relay(relay.NONE)
 
-   return actual_time, meas_curr, num_time_steps, time(), curr_floor_mean
+   return actual_time, meas_curr, meas_res, time(), curr_floor_mean
 
 def save_data(actual_time, meas_curr, meas_res, curr_floor):
    global data_hist
    # Save data from the sweep
    # save plot in Device Exploration Directory
+   for t_step in range(actual_time.shape[0]):
+      ax_curr.scatter(actual_time[t_step, :], meas_curr[t_step, :]-curr_floor, color='k')
+      ax_res.scatter(actual_time[t_step, :],  meas_res[t_step, :]-curr_floor, color='k')
+
+   fig_curr.tight_layout()
+   fig_res.tight_layout()
+   canvas_curr.draw()
+   canvas_res.draw()
+   canvas_curr.flush_events()
+   canvas_res.flush_events()
+
    bias_v = float(meas_bias_val.get())
    lna_gain = lna_gain_mode_clicked.get().replace(' ', '_')
    lna_filter = lna_filter_clicked.get().replace(' ', '_')
@@ -425,7 +438,7 @@ def update_meas(*args):
       elif name == "total_time":
          t = float(meas_period_meas.get())
          total_t = float(meas_time_meas.get())
-         meas_total_num_meas.set(floor(total_t/t))
+         set(meas_total_num_meas, floor(total_t/t))
       elif name == "num_meas":
          t = float(meas_period_meas.get())
          total_num = float(meas_total_num_meas.get())
@@ -506,7 +519,11 @@ stop_btn = tk.Button(plot_frame, text='Stop', command=set_e_stop,
 # Keep previous plots
 hold_on = tk.BooleanVar()
 plot_hold_on_check = tk.Checkbutton(plot_frame, text='Hold On', variable=hold_on)
-plot_hold_on_check.grid(column=0, row=4, columnspan=3, padx=5, pady=5)
+plot_hold_on_check.grid(column=0, row=4, padx=5, pady=5)
+show_data = tk.BooleanVar()
+plot_show_data_check = tk.Checkbutton(plot_frame, text='Update Plots', variable=show_data)
+plot_show_data_check.grid(column=1, row=4, padx=5, pady=5)
+show_data.set(True)
 # Set linthresh for symlog
 plot_linthresh_label = tk.Label(plot_frame, text='Symlog linthresh')
 plot_linthresh_val = tk.DoubleVar()
